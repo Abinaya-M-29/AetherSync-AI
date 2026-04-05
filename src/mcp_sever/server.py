@@ -1,9 +1,11 @@
 import os
 import pickle
+import sqlite3
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 import base64
+import json
 from mcp.server.fastmcp import FastMCP
 import logging
 from email.mime.text import MIMEText
@@ -59,7 +61,100 @@ blogger  = build("blogger",  "v3", credentials=creds, cache_discovery=False)
 #     return gmail, calendar, tasks, blogger
 # ===== MCP SERVER =====
 # mcp = FastMCP("google-tools")
-mcp = FastMCP("GoogleToolsServer", host="0.0.0.0", port=8080)
+mcp = FastMCP("AetherMCPServer", host="0.0.0.0", port=8080)
+
+
+DB_PATH = "database/inventory.db"
+logging.basicConfig(level=logging.INFO)
+
+def get_conn():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row          # rows behave like dicts
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+@mcp.tool()
+def query_db(sql: str, params: list = []) -> str:
+    """
+    Execute a SELECT query and return results as JSON.
+
+    Args:
+        sql:    A SELECT statement. No DDL or DML allowed here.
+        params: Optional list of positional parameters (? placeholders).
+
+    Example:
+        sql    = "SELECT * FROM products WHERE stock_qty < ?"
+        params = [10]
+    """
+    sql_upper = sql.strip().upper()
+    if not sql_upper.startswith("SELECT"):
+        return json.dumps({"error": "Only SELECT statements are allowed in query_db."})
+
+    try:
+        conn = get_conn()
+        rows = conn.execute(sql, params).fetchall()
+        conn.close()
+        result = [dict(r) for r in rows]
+        logging.info(f"query_db: {len(result)} rows — {sql[:80]}")
+        return json.dumps(result, default=str)
+    except Exception as e:
+        logging.error(f"query_db error: {e}")
+        return json.dumps({"error": str(e)})
+
+@mcp.tool()
+def get_low_stock() -> str:
+    """
+    Return all products where stock_qty <= reorder_level.
+    No SQL needed — use this for quick reorder alerts.
+    """
+    sql = """
+        SELECT p.sku, p.name, p.stock_qty, p.reorder_level,
+               c.name AS category, s.name AS supplier
+        FROM   products p
+        LEFT JOIN categories c ON c.id = p.category_id
+        LEFT JOIN suppliers  s ON s.id = p.supplier_id
+        WHERE  p.stock_qty <= p.reorder_level
+        ORDER  BY p.stock_qty ASC
+    """
+    conn = get_conn()
+    rows = [dict(r) for r in conn.execute(sql).fetchall()]
+    conn.close()
+    return json.dumps(rows, default=str)
+
+@mcp.tool()
+def execute_db(sql: str, params: list = []) -> str:
+    """
+    Execute an INSERT, UPDATE, or DELETE statement.
+
+    Args:
+        sql:    The DML statement to run.
+        params: Optional positional parameters (? placeholders).
+
+    Returns JSON with rowcount and last inserted id (if applicable).
+
+    Example — restock a product:
+        sql    = "UPDATE products SET stock_qty = stock_qty + ?, updated_at = CURRENT_TIMESTAMP WHERE sku = ?"
+        params = [50, "EL-001"]
+    """
+    sql_upper = sql.strip().upper()
+    forbidden = ("DROP", "TRUNCATE", "ALTER", "CREATE", "ATTACH", "DETACH", "PRAGMA")
+    if any(sql_upper.startswith(kw) for kw in forbidden):
+        return json.dumps({"error": f"Forbidden operation: {sql_upper.split()[0]}"})
+
+    try:
+        conn = get_conn()
+        cur = conn.execute(sql, params)
+        conn.commit()
+        result = {"rowcount": cur.rowcount, "lastrowid": cur.lastrowid}
+        conn.close()
+        logging.info(f"execute_db: {result} — {sql[:80]}")
+        return json.dumps(result)
+    except Exception as e:
+        logging.error(f"execute_db error: {e}")
+        conn.rollback()
+        conn.close()
+        return json.dumps({"error": str(e)})
+
 
 
 def extract_body(payload):
