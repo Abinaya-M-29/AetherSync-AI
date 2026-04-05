@@ -1,0 +1,11 @@
+google-adk
+fastapi
+uvicorn
+google-genai
+pydantic
+langgraph
+google-auth
+google-auth-oauthlib
+google-api-python-client
+python-dotenv
+fastmcp
