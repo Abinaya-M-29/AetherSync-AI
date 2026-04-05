@@ -40,3 +40,25 @@ UI server (later change to react/js)
 cd src
 streamlit run frontend/steamlit_ui.py
 ```
+
+
+### Dev mode usage
+
+Auth creation
+
+Google Gmail API - https://console.cloud.google.com/marketplace/product/google/gmail.googleapis.com?q=search&referrer=search&project=winged-woods-490206-v6
+
+Google Calendar API - https://console.cloud.google.com/marketplace/product/google/calendar-json.googleapis.com?q=search&referrer=search&project=winged-woods-490206-v6
+
+Google Tasks API - https://console.cloud.google.com/marketplace/product/google/tasks.googleapis.com?q=search&referrer=search&project=winged-woods-490206-v6
+
+Google Blogger API - https://console.cloud.google.com/marketplace/product/google/blogger.googleapis.com?q=search&referrer=search&project=winged-woods-490206-v6
+
+
+```
+mcp dev mcp_server/server.py
+```
+
+TODO:
+create a meeting invite and sent to another person
+fix the task creation error

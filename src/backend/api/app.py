@@ -12,8 +12,10 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.send",
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/blogger",
 ]
 
 app = FastAPI()
@@ -51,7 +53,7 @@ def oauth_callback(request: Request):
 
     creds = flow.credentials
 
-    with open("secret/token.pkl", "wb") as f:
+    with open("secrets/token.pkl", "wb") as f:
         pickle.dump(creds, f)
 
     return {"status": "authenticated"}
