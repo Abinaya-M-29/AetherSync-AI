@@ -1,0 +1,28 @@
+
+Available tools 
+## Email 
+send_email
+create_meeting
+get_recent_emails
+
+## Calendar
+create_event
+get_events_for_date
+
+## G Tasks
+get_tasks
+add_task
+
+## blogger
+add_blog_post
+get_blog_posts
+
+
+"Meeting"
+
+1. Check inventory 
+- if its low in database 
+- send a noteification message in email
+- send a meeting invite for restoring , send during non carbon hours if its not a priority
+- post a blog that "only {n} left"
+
