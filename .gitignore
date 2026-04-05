@@ -1,0 +1,10 @@
+.venv*
+*.egg-info
+__pycache__/
+*.pyc
+*.pyo
+*secrets*
+*.env
+*.log
+*.db
+*.sqlite
