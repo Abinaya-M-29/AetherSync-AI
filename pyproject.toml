@@ -16,7 +16,8 @@ dependencies = [
     "google-api-python-client>=2.193.0",
     "python-dotenv>=1.2.2",
     "fastmcp>=3.2.0",
-    "google-adk[extensions]"
+    "google-adk[extensions]",
+    "streamlit>=1.55.0"
 ]
 
 [build-system]
