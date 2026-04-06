@@ -8,7 +8,9 @@ from typing import Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 from google_auth_oauthlib.flow import Flow
 # from backend.workflow.graph_flow import app_graph
-from backend.workflow.graph_flow import app_graph_async
+# from backend.workflow.graph_flow import app_graph_async
+from backend.workflows.graph_router import run as run_orchestrator
+from pydantic import BaseModel
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
@@ -39,6 +41,13 @@ def get_flow():
 
 flow = get_flow()
 
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    domain:   str
+    response: str
+    error:    str = ""
 
 @app.get("/login")
 def login():
@@ -77,15 +86,22 @@ def oauth_callback(request: Request):
 @app.post("/chat_async")
 async def chat_async(req: dict):
     try:
-        user_input = req["message"]
+        # user_input = req["message"]
 
-        result = await app_graph_async.ainvoke({
-            "input": user_input
-        })
-        print("Result:", result)
-        return {
-            "response": result["output"]
-        }
+        # result = await app_graph_async.ainvoke({
+        #     "input": user_input
+        # })
+        # print("Result:", result)
+        # return {
+        #     "response": result["output"]
+        # }
+        result = await run_orchestrator(req.message)
+ 
+        return ChatResponse(
+            domain=result.get("domain", "unknown"),
+            response=result.get("response", ""),
+            error=result.get("error", ""),
+        )
     except Exception as e:
         print("Error during async chat:", str(e))
         return {

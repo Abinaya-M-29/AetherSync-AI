@@ -29,12 +29,20 @@ if user_input:
     # Call FastAPI backend
     try:
         response = requests.post(API_URL, json={"message": user_input})
-        bot_reply = response.json()["response"]
+        data = response.json()
+        bot_reply = data.get("response", "No response received.")
+        domain = data.get("domain", "unknown")
+        error = data.get("error", "")
+
+        if error:
+            bot_reply = f"⚠️ Error: {error}"
     except Exception as e:
         bot_reply = f"Error: {e}"
+        domain = "unknown"
 
     # Add bot response
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
 
     with st.chat_message("assistant"):
+        st.caption(f"🏷️ Domain: {domain}")   # shows domain above the reply
         st.markdown(bot_reply)
