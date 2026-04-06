@@ -18,6 +18,16 @@ uv sync
 ```
 *requirements.txt is just for reference
 
+```
+source .venv/bin/activate
+```
+
+Set up database
+```
+python backend/db/seed_db.py
+```
+
+
 ### Usage and Run
 
 - 3 servers
@@ -60,5 +70,6 @@ mcp dev mcp_server/server.py
 ```
 
 TODO:
-create a meeting invite and sent to another person
-fix the task creation error
+- create DB
+- Add agent according to prompt
+- Check if langgraph workflow or a single master agent + sub agents are fine

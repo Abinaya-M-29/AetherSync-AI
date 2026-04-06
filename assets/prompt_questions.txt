@@ -20,9 +20,25 @@ get_blog_posts
 
 "Meeting"
 
-1. Check inventory 
+1. Check inventory - "Check our database and send emails if any inventory  low"
 - if its low in database 
-- send a noteification message in email
-- send a meeting invite for restoring , send during non carbon hours if its not a priority
+- send a noteification message in email to raw materials person 
+- send a meeting invite for restoring , send during non carbon hours if its not a priority (static constants)
 - post a blog that "only {n} left"
+
+2.  Quotation 
+read email, 
+fetch relavant prices 
+offer, (current offer, offer expiry date)
+-> send quoatation
+
+
+3. Feedback analysis
+feedback in db
+Feedback comes in email 
+Agent analyses feedback  , and gives 
+periodic - 
+write db 
+
+
 
