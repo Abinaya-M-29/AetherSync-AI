@@ -43,11 +43,11 @@ import httplib2
 
 http = httplib2.Http(timeout=20)
 
-creds = get_credentials()
-gmail    = build("gmail",    "v1", credentials=creds)
-calendar = build("calendar", "v3", credentials=creds)
-tasks    = build("tasks",    "v1", credentials=creds)
-blogger  = build("blogger",  "v3", credentials=creds, cache_discovery=False)
+# creds = get_credentials()
+# gmail    = build("gmail",    "v1", credentials=creds)
+# calendar = build("calendar", "v3", credentials=creds)
+# tasks    = build("tasks",    "v1", credentials=creds)
+# blogger  = build("blogger",  "v3", credentials=creds, cache_discovery=False)
 
 
 # def get_services():
