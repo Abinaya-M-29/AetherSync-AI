@@ -26,19 +26,28 @@ get_blog_posts
 - send a meeting invite for restoring , send during non carbon hours if its not a priority (static constants)
 - post a blog that "only {n} left"
 
-2.  Quotation 
-read email, 
-fetch relavant prices 
+Working promtps
+- Run the inventory check now.
+- "Flush the MCP schedule queue and return the result."
+
+2.  Quotation Agent
+read the latest 3 emails, 
+fetch relavant prices of the products from db for each email. ignore if its irrelvant email.
 offer, (current offer, offer expiry date)
--> send quoatation
+-> send quoatation via email to each request
 
+will make more usage if its fetching all today email.
 
-3. Feedback analysis
+Working prompts:
+- Call automated Sales Quotation Agent. check email and generate quotation
+
+3. Feedback Agent
 feedback in db
 Feedback comes in email 
 Agent analyses feedback  , and gives 
 periodic - 
 write db 
-
+prompts
+- Check emails for any customer feedback and store it in the database"
 
 

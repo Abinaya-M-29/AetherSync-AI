@@ -11,9 +11,13 @@ import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from google_auth_oauthlib.flow import Flow
+from datetime import datetime, timedelta
 
 #log to a file
 logging.basicConfig(filename="google_tools.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+import json, os
+
+QUEUE_FILE = "/tmp/email_queue.json"
 
 # ===== CONFIG =====
 SCOPES = [
@@ -96,9 +100,11 @@ def query_db(sql: str, params: list = []) -> str:
         conn.close()
         result = [dict(r) for r in rows]
         logging.info(f"query_db: {len(result)} rows — {sql[:80]}")
+        logging.info(result)
         return json.dumps(result, default=str)
     except Exception as e:
         logging.error(f"query_db error: {e}")
+        logging.info(result)
         return json.dumps({"error": str(e)})
 
 @mcp.tool()
@@ -119,7 +125,58 @@ def get_low_stock() -> str:
     conn = get_conn()
     rows = [dict(r) for r in conn.execute(sql).fetchall()]
     conn.close()
+    logging.info(f"get_low_stock: found {json.dumps(rows, default=str)} low stock product(s)")
     return json.dumps(rows, default=str)
+
+@mcp.tool()
+def get_stock_and_offers(product_name: str) -> str:
+    """
+    input is product name or partial name, output is stock and offer information for matching products.
+    Return stock and offer information for a specific product.
+    """
+    sql = """
+        SELECT p.sku, p.name, p.stock_qty, p.reorder_level, p.unit_price, p.current_offer, p.offer_expires_at,
+               c.name AS category, s.name AS supplier
+        FROM   products p
+        LEFT JOIN categories c ON c.id = p.category_id
+        LEFT JOIN suppliers  s ON s.id = p.supplier_id
+        WHERE  p.name LIKE ?
+    """
+    logging.info(f"get_stock_and_offers: product_name={product_name} SQL={sql}")
+    conn = get_conn()
+    rows = [dict(r) for r in conn.execute(sql, (f"%{product_name}%",)).fetchall()]
+    logging.info(f"get_stock_and_offers: found {json.dumps(rows, default=str)} matching product(s)")
+    conn.close()
+    return json.dumps(rows, default=str)
+
+@mcp.tool()
+def insert_feedback(payload: dict) -> str:
+    """
+    Insert feedback into the feedback_store table in the database.
+    (source, sender_id, sender_name, subject, message, rating, sentiment) are parameters in the payload dict.
+    """
+    sql = """
+        INSERT INTO feedback_store (source, sender_id, sender_name, subject, message, rating, sentiment)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """
+    logging.info(f"insert_feedback: payload={payload} SQL={sql}")
+    conn = get_conn()
+    cur = conn.execute(sql, (
+        payload.get("source"),
+        payload.get("sender_id"),
+        payload.get("sender_name"),
+        payload.get("subject"),
+        payload.get("message"),
+        payload.get("rating"),
+        payload.get("sentiment")
+    ))
+    conn.commit()
+    conn.close()
+    logging.info(f"insert_feedback: inserted feedback with id={cur.lastrowid}")
+    return json.dumps({"rowcount": cur.rowcount, "lastrowid": cur.lastrowid})
+
+
+
 
 @mcp.tool()
 def execute_db(sql: str, params: list = []) -> str:
@@ -187,6 +244,7 @@ def get_blog_id(blogger, blog_url: str = None):
         blog = blogger.blogs().getByUrl(url=blog_url).execute()
         return blog["id"]
     blogs = blogger.blogs().listByUser(userId="self").execute()
+    logging.info(f"get_blog_id: found {len(blogs.get('items', []))} blog(s)")
     if not blogs.get("items"):
         raise ValueError("No blogs found for this account.")
     return blogs["items"][0]["id"]
@@ -201,6 +259,7 @@ def send_email(to: str, subject: str, body: str, html: bool = False):
         to:      Recipient email address (or comma-separated list).
         subject: Email subject line.
         body:    Email body — plain text, or HTML markup when html=True.
+        schedule: Set True to schedule the email for later delivery.
         html:    Set True to send as HTML email; defaults to plain text.
     """
     logging.info(f"send_email: to={to} subject={subject}")
@@ -296,7 +355,7 @@ def get_recent_emails(n: int):
         n = 5  # default to 5 to reduce risk of large responses; adjust as needed
     logging.info(f"get_recent_emails: fetching last {n} emails")
 
-    results = gmail.users().messages().list(userId="me", maxResults=n).execute()
+    results = gmail.users().messages().list(userId="me",labelIds=['INBOX'], maxResults=n).execute()
     messages = results.get("messages", [])[::-1]
 
     full_emails = []
@@ -311,7 +370,9 @@ def get_recent_emails(n: int):
             "body":    extract_body(msg_data["payload"]),
         })
 
-    logging.info(f"get_recent_emails: returned {len(full_emails)} email(s)")
+    for each in full_emails:
+        logging.info(f"Email ID: {each['id']} Subject: {each['subject']} From: {each['from']} Body Preview: {each['body']}")
+    # logging.info(f"get_recent_emails: returned {full_email0s} email(s)")
     return full_emails
 
 
@@ -507,6 +568,89 @@ def get_blog_posts(start_time: str, end_time: str, blog_url: str = None, max_res
         }
         for p in posts
     ]
+
+
+def _queue_email(to, subject, body):
+    queue = _load_queue()
+    queue.append({"to": to, "subject": subject, "body": body, "queued_at": datetime.now().isoformat()})
+    with open(QUEUE_FILE, "w") as f:
+        json.dump(queue, f)
+
+def _load_queue():
+    if not os.path.exists(QUEUE_FILE):
+        return []
+    with open(QUEUE_FILE) as f:
+        return json.load(f)
+
+def _clear_queue():
+    if os.path.exists(QUEUE_FILE):
+        os.remove(QUEUE_FILE)
+
+
+@mcp.tool()
+def add_to_queue(payload: dict):
+    """Provide email info, calendar event details, or blog post content to be queued for later processing."""
+    """
+    {
+        email: {
+            "to": SUPPLIER_EMAIL,
+            "subject": "Low Stock Alert: <product_name> (SKU: <sku>) — only <stock_qty> units left",
+            "body": "Please prepare to restock <product_name> (SKU: <sku>). Current stock is critically low at <stock_qty> units. We will place the order during non-carbon hours to minimize environmental impact."
+        },
+        calendar_event: {
+            "title": "Restock Review: <product_name>",
+            "datetime": "2026-04-05T09:00:00",
+            "duration_minutes": 30,
+            "description": "Review restock plan for <product_name>. Current stock is critically low at <stock_qty> units."
+        },
+        blog_post: {
+            "title": "Low Stock Alert: <product_name>",
+            "content": "Only <stock_qty> units of <product_name> (SKU: <sku>) remaining. We will place the reorder during non-carbon hours to minimize environmental impact."
+        }
+    }
+    """
+    os.makedirs("tmp/schedule_queue", exist_ok=True)
+    with open(f"tmp/schedule_queue/{datetime.now().isoformat()}.json", "w") as f:
+        json.dump(payload, f, indent=2)
+    # _queue_email(to, subject, body)
+    logging.info(f"Item queued: {payload}")
+    return {"status": "queued successfully"}
+
+@mcp.tool()
+def flush_queue() -> dict:
+    """
+    Send all queued items. Call this during non-carbon hours to drain the queue.
+    Returns how many items were sent.
+    """
+    list_of_files = os.listdir("tmp/schedule_queue") if os.path.exists("tmp/schedule_queue") else []
+    sent = 0
+    for filename in sorted(list_of_files):
+        with open(f"tmp/schedule_queue/{filename}") as f:
+            payload = json.load(f)
+            if "email" in payload:
+                email = payload["email"]
+                send_email(email["to"], email["subject"], email["body"])
+                sent += 1
+            if "calendar_meeting" in payload:
+                event = payload["calendar_meeting"]
+                create_meeting(
+                    summary=event["summary"],
+                    start=event["start"],
+                    end=event["end"],
+                    attendee_emails=event.get("attendee_emails", []),
+                    description=event.get("description", "")
+                )
+                sent += 1
+            if "blog_post" in payload:
+                post = payload["blog_post"]
+                add_blog_post(
+                    title=post["title"],
+                    content=post["content"]
+                )
+                sent += 1
+        # os.remove(f"tmp/schedule_queue/{filename}")
+    logging.info(f"flush_queue: sent {sent} item(s)")
+    return {"status": "done", "sent": sent}
 
 # @mcp.tool()
 # def add_task(title: str):

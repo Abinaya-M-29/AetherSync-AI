@@ -73,3 +73,7 @@ TODO:
 - create DB
 - Add agent according to prompt
 - Check if langgraph workflow or a single master agent + sub agents are fine
+
+
+cron job
+0 22 * * * curl -X POST http://localhost:8080/flush-queue
