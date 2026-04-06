@@ -1,41 +1,115 @@
-import { Box, Typography, Button, Card } from '@mui/material';
+import { useState } from 'react';
+import { Box, Typography, Button, Card, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, LinearProgress } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import axios from 'axios';
 import { useMetrics } from '../../hooks/useMetrics';
 
 export default function Inventory() {
-  const { inventory, loading } = useMetrics();
+  const { inventory, loading, fetchInventory } = useMetrics();
+  
+  const [sellModalOpen, setSellModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [sellQuantity, setSellQuantity] = useState(1);
+
+  const handleSellClick = (product) => {
+    setSelectedProduct(product);
+    setSellQuantity(1);
+    setSellModalOpen(true);
+  };
+
+  const handleSellSubmit = async () => {
+    if (!selectedProduct || sellQuantity <= 0) return;
+    
+    // Remove focus from the active element (e.g. the Confirm button) to prevent 
+    // the "Blocked aria-hidden on an element because its descendant retained focus" warning.
+    if (document.activeElement && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    
+    try {
+      await axios.post(`http://localhost:8000/api/inventory/products/${selectedProduct.sku}/sell`, {
+        quantity: parseInt(sellQuantity, 10)
+      });
+      setSellModalOpen(false);
+      fetchInventory(); // Refresh the grid
+    } catch (error) {
+      console.error("Error selling product:", error);
+      alert(error.response?.data?.detail || "Failed to sell product");
+    }
+  };
 
   const columns = [
-    { field: 'id', headerName: 'ID', width: 70 },
+    { field: 'sku', headerName: 'SKU', width: 100 },
     { field: 'itemName', headerName: 'Item Name', flex: 1 },
-    { field: 'location', headerName: 'Location', flex: 1 },
+    { field: 'location', headerName: 'Category', flex: 1 },
     {
       field: 'stock',
       headerName: 'Stock Level',
-      width: 130,
+      width: 100,
       type: 'number'
     },
     {
       field: 'status',
       headerName: 'Status',
-      width: 130,
+      width: 140,
+      renderCell: (params) => {
+        let gradient = 'none';
+        let color = '#fff';
+        
+        if (params.value === "Low") {
+          gradient = 'linear-gradient(135deg, #ff0844 0%, #ffb199 100%)';
+        } else if (params.value === "Medium") {
+          gradient = 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)';
+          color = '#000'; // dark text for readability on yellow
+        } else if (params.value === "High") {
+          gradient = 'linear-gradient(135deg, #a8e063 0%, #56ab2f 100%)';
+        } else if (params.value === "Out of Stock") {
+          gradient = 'linear-gradient(135deg, #434343 0%, #000000 100%)';
+        }
+
+        return (
+          <Chip 
+            label={params.value} 
+            size="small" 
+            sx={{ 
+              background: gradient,
+              color: color,
+              fontWeight: 'bold',
+              border: 'none',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }} 
+          />
+        );
+      }
     },
     {
       field: 'action',
       headerName: 'Action',
       sortable: false,
-      width: 120,
+      flex: 1,
+      minWidth: 160,
       renderCell: (params) => {
         return (
-          <Button
-            variant="outlined"
-            size="small"
-            color="secondary"
-            disabled={params.row.stock >= 5}
-            sx={{ mt: 1 }}
-          >
-            Reorder
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+            <Button
+              variant="contained"
+              size="small"
+              color="primary"
+              disabled={params.row.stock <= 0}
+              onClick={() => handleSellClick(params.row)}
+            >
+              Sell
+            </Button>
+            {params.row.stock <= params.row.reorder_level && (
+              <Button
+                variant="outlined"
+                size="small"
+                color="secondary"
+              >
+                Reorder
+              </Button>
+            )}
+          </Box>
         );
       }
     }
@@ -62,6 +136,7 @@ export default function Inventory() {
           rows={inventory}
           columns={columns}
           loading={loading}
+          slots={{ loadingOverlay: LinearProgress }}
           initialState={{
             pagination: {
               paginationModel: { page: 0, pageSize: 10 },
@@ -70,7 +145,7 @@ export default function Inventory() {
           pageSizeOptions={[5, 10]}
           disableRowSelectionOnClick
           getRowClassName={(params) =>
-            params.row.stock < 5 ? 'super-app-theme--LowStock' : ''
+            params.row.stock <= params.row.reorder_level ? 'super-app-theme--LowStock' : ''
           }
           sx={{
             border: 0,
@@ -93,6 +168,50 @@ export default function Inventory() {
           }}
         />
       </Card>
+
+      <Dialog 
+        open={sellModalOpen} 
+        onClose={() => setSellModalOpen(false)}
+        PaperProps={{
+          sx: {
+            backgroundColor: '#ffffff',
+            color: '#000000',
+            borderRadius: '12px',
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: '#000' }}>Sell Product</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2, color: '#333' }}>
+            Selling: {selectedProduct?.itemName} (Available: {selectedProduct?.stock})
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Quantity"
+            type="number"
+            fullWidth
+            variant="outlined"
+            value={sellQuantity}
+            onChange={(e) => setSellQuantity(e.target.value)}
+            inputProps={{ min: 1, max: selectedProduct?.stock || 1 }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                color: '#000',
+                '& fieldset': { borderColor: 'rgba(0,0,0,0.2)' },
+                '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.4)' },
+              },
+              '& .MuiInputLabel-root': { color: '#666' },
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSellModalOpen(false)} sx={{ color: '#666' }}>Cancel</Button>
+          <Button onClick={handleSellSubmit} variant="contained" color="primary">
+            Confirm Sale
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

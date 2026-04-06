@@ -25,31 +25,28 @@ function useInterval(callback, delay) {
 
 export function useMetrics() {
   const [gridHealth, setGridHealth] = useState(gridHealthData);
-  const [inventory, setInventory] = useState(inventoryData);
-  const [loading, setLoading] = useState(false);
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useInterval(async () => {
-    // In a real app, these would hit /api/inventory and /api/grid-status
-    // try {
-    //   setLoading(true);
-    //   const [gridRes, invRes] = await Promise.all([
-    //     axios.get('/api/grid-status'),
-    //     axios.get('/api/inventory')
-    //   ]);
-    //   setGridHealth(gridRes.data);
-    //   setInventory(invRes.data);
-    // } catch (err) {
-    //   console.error("Error fetching metrics", err);
-    // } finally {
-    //   setLoading(false);
-    // }
-
-    // Simulating updates for the prototype
-    setLoading(true);
-    setTimeout(() => {
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+      const invRes = await axios.get('http://localhost:8000/api/inventory/products');
+      setInventory(invRes.data);
+    } catch (err) {
+      console.error("Error fetching inventory", err);
+    } finally {
       setLoading(false);
-    }, 500);
-  }, 10000); // 10 seconds
+    }
+  };
 
-  return { gridHealth, inventory, loading };
+  useEffect(() => {
+    fetchInventory();
+  }, []);
+
+  useInterval(() => {
+    fetchInventory();
+  }, 15000); // Poll every 15 seconds
+
+  return { gridHealth, inventory, loading, fetchInventory };
 }
