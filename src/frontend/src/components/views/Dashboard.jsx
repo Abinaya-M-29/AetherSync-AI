@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, Typography, Button, Grid, Tooltip, Chip } from '@mui/material';
+import { Box, Card, CardContent, Typography, Button, Grid, Tooltip, Chip, Snackbar, Alert, CircularProgress } from '@mui/material';
 import { useMetrics } from '../../hooks/useMetrics';
 import AgentTimeline from '../AgentTimeline';
 import PermissionDialog from '../PermissionDialog';
@@ -6,11 +6,18 @@ import { useState } from 'react';
 import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
 import Co2Icon from '@mui/icons-material/Co2';
 import BoltIcon from '@mui/icons-material/Bolt';
+import StarIcon from '@mui/icons-material/Star';
+import InventoryIcon from '@mui/icons-material/Inventory2';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import FeedbackIcon from '@mui/icons-material/Feedback';
+import axios from 'axios';
 
 export default function Dashboard() {
-  const { gridHealth, activityLogs } = useMetrics();
+  const { gridHealth, activityLogs, feedbackSummary } = useMetrics();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [agentLoading, setAgentLoading] = useState({ inventory: false, quotation: false, feedback: false });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const handleActionRequired = (task) => {
     setSelectedTask(task);
@@ -18,6 +25,55 @@ export default function Dashboard() {
   };
 
   const isHealthy = gridHealth.status === 'GREEN';
+
+  const triggerAgent = async (agentKey, endpoint, label) => {
+    setAgentLoading(prev => ({ ...prev, [agentKey]: true }));
+    try {
+      await axios.post(endpoint);
+      setSnackbar({ open: true, message: `${label} triggered! Watch the Aether Flow for live updates.`, severity: 'success' });
+    } catch (err) {
+      setSnackbar({ open: true, message: `Failed to trigger ${label}. Please try again.`, severity: 'error' });
+    } finally {
+      setAgentLoading(prev => ({ ...prev, [agentKey]: false }));
+    }
+  };
+
+  const agentActions = [
+    {
+      key: 'inventory',
+      label: 'Inventory Check',
+      description: 'Scan stock & alert suppliers',
+      endpoint: '/check-inventory',
+      icon: <InventoryIcon />,
+      gradient: 'linear-gradient(135deg, #2E7D32, #1B5E20)',
+      shadow: 'rgba(46,125,50,0.35)',
+    },
+    {
+      key: 'quotation',
+      label: 'Quotation Agent',
+      description: 'Reply to "Quotation for ..." emails',
+      endpoint: '/automated_quotation_agent',
+      icon: <RequestQuoteIcon />,
+      gradient: 'linear-gradient(135deg, #1565C0, #0D47A1)',
+      shadow: 'rgba(21,101,192,0.35)',
+    },
+    {
+      key: 'feedback',
+      label: 'Feedback Agent',
+      description: 'Process "Feedback on ..." emails',
+      endpoint: '/automated_feedback_agent',
+      icon: <FeedbackIcon />,
+      gradient: 'linear-gradient(135deg, #6A1B9A, #4A148C)',
+      shadow: 'rgba(106,27,154,0.35)',
+    },
+  ];
+
+  const ratingStars = (rating) => {
+    const full = Math.round(rating);
+    return Array.from({ length: 5 }, (_, i) => (
+      <StarIcon key={i} sx={{ fontSize: 16, color: i < full ? '#F9A825' : 'rgba(0,0,0,0.15)' }} />
+    ));
+  };
 
   return (
     <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 88px)', gap: 2.5 }}>
@@ -52,18 +108,15 @@ export default function Dashboard() {
 
       {/* Compact Top Stats Row */}
       <Grid container spacing={2} sx={{ flexShrink: 0 }}>
-        {/* Carbon Saved — compact horizontal card */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{
-            background: 'linear-gradient(135deg, rgba(46, 125, 50, 0.08) 0%, rgba(255,255,255,0.65) 100%)',
-          }}>
+        {/* Carbon Saved */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ background: 'linear-gradient(135deg, rgba(46, 125, 50, 0.08) 0%, rgba(255,255,255,0.65) 100%)' }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2.5, py: '14px !important', px: 3 }}>
               <Box sx={{
                 width: 46, height: 46, borderRadius: 2,
                 background: 'linear-gradient(135deg, #2E7D32, #1B5E20)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 14px rgba(46,125,50,0.35)',
-                flexShrink: 0
+                boxShadow: '0 4px 14px rgba(46,125,50,0.35)', flexShrink: 0
               }}>
                 <Co2Icon sx={{ color: '#fff', fontSize: 24 }} />
               </Box>
@@ -82,18 +135,15 @@ export default function Dashboard() {
           </Card>
         </Grid>
 
-        {/* Grid Health — compact with mini gauge */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{
-            background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.08) 0%, rgba(255,255,255,0.65) 100%)',
-          }}>
+        {/* Grid Health */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.08) 0%, rgba(255,255,255,0.65) 100%)' }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2.5, py: '14px !important', px: 3 }}>
               <Box sx={{
                 width: 46, height: 46, borderRadius: 2,
                 background: 'linear-gradient(135deg, #1976D2, #0D47A1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 14px rgba(25,118,210,0.35)',
-                flexShrink: 0
+                boxShadow: '0 4px 14px rgba(25,118,210,0.35)', flexShrink: 0
               }}>
                 <BoltIcon sx={{ color: '#fff', fontSize: 24 }} />
               </Box>
@@ -129,9 +179,89 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Feedback Rating Card */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ background: 'linear-gradient(135deg, rgba(106,27,154,0.08) 0%, rgba(255,255,255,0.65) 100%)' }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2.5, py: '14px !important', px: 3 }}>
+              <Box sx={{
+                width: 46, height: 46, borderRadius: 2,
+                background: 'linear-gradient(135deg, #6A1B9A, #4A148C)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(106,27,154,0.35)', flexShrink: 0
+              }}>
+                <StarIcon sx={{ color: '#fff', fontSize: 24 }} />
+              </Box>
+              <Box>
+                <Typography variant="overline" sx={{ fontWeight: 800, color: '#6A1B9A', display: 'block', lineHeight: 1.3, fontSize: '0.62rem' }}>
+                  Overall Feedback
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900, color: '#4A148C', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+                    {feedbackSummary.average_rating > 0 ? feedbackSummary.average_rating : '—'}
+                  </Typography>
+                  {feedbackSummary.average_rating > 0 && (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>/5</Typography>
+                  )}
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {feedbackSummary.average_rating > 0 ? ratingStars(feedbackSummary.average_rating) : null}
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, ml: 0.5 }}>
+                    {feedbackSummary.total_reviews > 0 ? `${feedbackSummary.total_reviews} review${feedbackSummary.total_reviews > 1 ? 's' : ''}` : 'No reviews yet'}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
-      {/* Priority: Aether Flow — fills ALL remaining space */}
+      {/* Agent Action Buttons */}
+      <Card sx={{ flexShrink: 0, p: 0 }}>
+        <Box sx={{ px: 3, pt: 2, pb: 1 }}>
+          <Typography variant="overline" sx={{ fontWeight: 800, color: 'text.secondary', fontSize: '0.65rem', letterSpacing: '0.1em' }}>
+            Manual Agent Triggers
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2, px: 3, pb: 2, flexWrap: 'wrap' }}>
+          {agentActions.map((action) => (
+            <Button
+              key={action.key}
+              id={`trigger-${action.key}-agent`}
+              variant="contained"
+              size="medium"
+              disabled={agentLoading[action.key]}
+              startIcon={agentLoading[action.key] ? <CircularProgress size={16} sx={{ color: 'white' }} /> : action.icon}
+              onClick={() => triggerAgent(action.key, action.endpoint, action.label)}
+              sx={{
+                background: agentLoading[action.key] ? 'rgba(0,0,0,0.2)' : action.gradient,
+                boxShadow: `0 4px 14px ${action.shadow}`,
+                borderRadius: 2.5,
+                px: 2.5,
+                py: 1,
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                textTransform: 'none',
+                transition: 'all 0.25s ease',
+                '&:hover': {
+                  opacity: 0.88,
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 6px 20px ${action.shadow}`,
+                },
+              }}
+            >
+              <Box>
+                <Box>{action.label}</Box>
+                <Typography variant="caption" sx={{ opacity: 0.8, display: 'block', lineHeight: 1.1, fontWeight: 500, fontSize: '0.67rem' }}>
+                  {action.description}
+                </Typography>
+              </Box>
+            </Button>
+          ))}
+        </Box>
+      </Card>
+
+      {/* Aether Flow — fills ALL remaining space */}
       <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
         <Box sx={{
           px: 3, py: 2,
@@ -174,6 +304,24 @@ export default function Dashboard() {
           gridStatus={gridHealth.status}
         />
       )}
+
+      {/* Snackbar Notification */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={5000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ fontWeight: 700 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
+

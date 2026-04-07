@@ -188,7 +188,6 @@ async def _run(state: AgentState, domain: str) -> AgentState:
 
         if run_id: log_step(run_id, 3, "init", "MCP toolset loaded and session started")
 
-        # Build the user message
         user_message = genai.types.Content(
             role="user",
             parts=[genai.types.Part(text=state["input"])]
@@ -196,6 +195,8 @@ async def _run(state: AgentState, domain: str) -> AgentState:
 
         # Run the agent and collect the final response
         response_text = ""
+        all_text_parts = []   # accumulate ALL text from any model turn
+        tools_called = []
         step_counter = 4
         
         async for event in runner.run_async(
@@ -203,19 +204,34 @@ async def _run(state: AgentState, domain: str) -> AgentState:
             session_id=f"{domain}_session" if not run_id else f"{domain}_session_{run_id}",
             new_message=user_message,
         ):
-            if run_id:
-                # Log model's function calls
-                if hasattr(event, "model_response") and event.model_response and event.model_response.parts:
-                    for part in event.model_response.parts:
-                        if hasattr(part, "function_call") and part.function_call:
-                            tool_name = part.function_call.name
-                            args_dict = None
-                            if hasattr(part.function_call, "args"):
-                                try:
-                                    args_dict = dict(part.function_call.args)
-                                except Exception:
-                                    args_dict = str(part.function_call.args)
-                            
+            # ── Capture ANY model text (not just final) ──────────────────
+            if hasattr(event, "content") and event.content and event.content.parts:
+                for part in event.content.parts:
+                    # Collect text from model turns
+                    if hasattr(part, "text") and part.text and part.text.strip():
+                        all_text_parts.append(part.text.strip())
+
+                    # Log tool responses
+                    if hasattr(part, "function_response") and part.function_response:
+                        tool_name = part.function_response.name
+                        if run_id:
+                            log_step(run_id, step_counter, "tool_response", f"Tool returned: {tool_name}")
+                        step_counter += 1
+
+            # ── Log model function calls ──────────────────────────────────
+            if hasattr(event, "model_response") and event.model_response and event.model_response.parts:
+                for part in event.model_response.parts:
+                    if hasattr(part, "function_call") and part.function_call:
+                        tool_name = part.function_call.name
+                        tools_called.append(tool_name)
+                        args_dict = None
+                        if hasattr(part.function_call, "args"):
+                            try:
+                                args_dict = dict(part.function_call.args)
+                            except Exception:
+                                args_dict = str(part.function_call.args)
+
+                        if run_id:
                             log_step(
                                 run_id,
                                 step_counter,
@@ -223,29 +239,18 @@ async def _run(state: AgentState, domain: str) -> AgentState:
                                 f"Calling tool: {tool_name}",
                                 payload_dict={"tool": tool_name, "args": args_dict}
                             )
-                            step_counter += 1
+                        step_counter += 1
 
-                # Log tool responses
-                if hasattr(event, "content") and event.content and event.content.parts:
-                    for part in event.content.parts:
-                        if hasattr(part, "function_response") and part.function_response:
-                            tool_name = part.function_response.name
-                            log_step(
-                                run_id,
-                                step_counter,
-                                "tool_response",
-                                f"Tool returned: {tool_name}"
-                            )
-                            step_counter += 1
+                    # Also collect text from model_response parts
+                    if hasattr(part, "text") and part.text and part.text.strip():
+                        all_text_parts.append(part.text.strip())
 
-
-            if event.is_final_response():
-                if event.content and event.content.parts:
-                    text_parts = [p.text for p in event.content.parts if hasattr(p, "text") and p.text]
-                    if text_parts:
-                        response_text = text_parts[0]
-
-        if not response_text:
+        # ── Build response text ───────────────────────────────────────────
+        if all_text_parts:
+            response_text = all_text_parts[-1]   # use last meaningful text
+        elif tools_called:
+            response_text = f"Agent completed successfully. Tools used: {', '.join(tools_called)}."
+        else:
             response_text = "Agent completed but returned no text response."
 
         if run_id:

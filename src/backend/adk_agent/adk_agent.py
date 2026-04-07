@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 load_dotenv("secrets/.env", override=True)
 
-MCP_URL = "http://localhost:8080/mcp"
+MCP_URL = "http://127.0.0.1:8081/mcp"
 
 GEMINI_MODEL = "gemini-2.5-flash-lite"
 
@@ -35,9 +35,8 @@ inventory_agent:
     - send a meeting invite for restoring , 
     - post a blog that "only {n} left"
 """
-
-SUPPLIER_EMAIL =   "abinayamurugesan29@gmail.com" # raw materials contact
-YOUR_EMAIL     = "abinayamurugesan2912@gmail.com"     # for CC / meeting organiser
+SUPPLIER_EMAIL = "ajithdschrozahan@gmail.com"   # raw materials contact
+YOUR_EMAIL     = "inocajith21.5@gmail.com"     # for CC / meeting organiser
 
 def build_inventory_prompt() -> str:
     now        = datetime.now()
@@ -182,23 +181,36 @@ async def check_email_generate_quotation_agent():
         tools=tools,
         name="email_quotation_rfq_agent",
         instruction="""
-You are an automated Sales Quotation Agent for sending replies for RFQs. You have access to three specific tools: 
+You are an automated Sales Quotation Agent. You have access to three specific tools:
 1. `get_recent_emails`
 2. `get_stock_and_offers`
 3. `send_email`
 
-1. Fetch last 3 emails using `get_recent_emails` and check if any email contains a Request for Quotation (RFQ) for any products
-listed here: ["Wireless Mouse", "Mechanical Keyboard", "USB-C Hub 7-in-1", "A4 Notebook (Pack 5)", "Ball Pen Box (50pcs)"]. An RFQ email will typically have a subject like "Request for Quotation" and may mention quantity and other details in the body.
+## STEP 1 — Fetch and Filter Emails
+Call `get_recent_emails` and retrieve ONLY the last 5 emails. From those, find any whose subject contains the phrase "Quotation for" followed by a product name (e.g., "Quotation for Mechanical Keyboard").
 
-2. check the stock and offers of product using `get_stock_and_offers` tool for each RFQ email found. Extract the product name from the email (e.g., "Wireless Mouse") and use it as the input to `get_stock_and_offers`.
+For each matching email, extract and NOTE DOWN:
+- The SENDER's email address from the `from` field (e.g., "from": "Abi <abi@gmail.com>" → sender_email = "abi@gmail.com")
+- The product name from the subject (e.g., subject "Quotation for Wireless Mouse" → product = "Wireless Mouse")
 
-3. Quotation & Response
-- Once you have the stock/offer data, draft a professional quotation in text format. Include the product name, available stock, unit price, any current offers based on typical lead times.
-- Call `send_email(to=..., subject=..., body=...)` for each valid RFQ.
+## STEP 2 — Fetch Stock and Offer Data
+Call `get_stock_and_offers` with the extracted product name to get pricing, stock, and current offers.
 
-### STRICT OPERATIONAL RULES:
+## STEP 3 — Send Quotation Reply
+Draft a professional quotation email including: product name, available stock, unit price, current offer, and typical delivery time.
+
+Call `send_email` with:
+- `to` = the sender's email address you extracted in Step 1 from the `from` field of the RFQ email
+- `subject` = "Re: <original subject>"
+- `body` = your professional quotation
+
+### ⚠️ CRITICAL RULES — READ CAREFULLY:
+- The `to` field in `send_email` MUST BE the email address from the `from` field of the received RFQ email.
+- NEVER use a supplier name, company name, or anything from the stock/offers data as the email recipient.
+- NEVER make up or guess an email address. If you cannot find a valid sender email in the `from` field, skip that email and do not send anything.
+- The `get_stock_and_offers` tool returns supplier info for inventory purposes ONLY — do NOT send the quotation to any supplier-related email.
 - TOOL EXECUTION: You must call the tools. Do not just describe what you would do.
-- FINAL REPORT: Only after all `send_email` calls are finished, provide a short summary of your actions.
+- FINAL REPORT: After all `send_email` calls, report: how many RFQ emails found, which products were quoted, and which email addresses received a reply.
 """
     )
     return agent
@@ -218,19 +230,27 @@ You are an automated Feedback Store Agent for storing feedback from emails. You 
 1. `get_recent_emails`
 2. `insert_feedback`
 
-1. Fetch last 3 emails using `get_recent_emails` and check if any email contains customer feedback about products. Feedback emails may have subjects like "Feedback on [Product Name]" or "Complaint about [Product Name]". Extract the following details from each feedback email:
-- sender's email (sender_id)
-- sender's name (if available in the email body or signature)
-- subject of the email
-- main message content (the feedback itself)
-- rating (if the email contains a rating, e.g., "I rate this product 4 out of 5")
-- sentiment (determine if the feedback is positive, negative, or neutral based on the content)
+1. Call `get_recent_emails` and retrieve ONLY the last 5 emails. Do NOT process more than 5 emails under any circumstances.
 
-2. For each feedback email found, call the `insert_feedback` tool with the extracted details to store it in the database.
+2. From those 5 emails, filter ONLY the ones whose subject line contains the phrase "Feedback on" followed by a product name.
+   - VALID example: "Feedback on Mechanical Keyboard", "Feedback on Wireless Mouse"
+   - INVALID: "Re: Order", "Hello", "Quotation for ..." — skip these entirely.
+
+3. For each matching email (subject contains "Feedback on"), extract:
+- sender's email (sender_id)
+- sender's name (if available in the email body or signature, else leave blank)
+- subject of the email
+- main message content (the feedback text itself)
+- rating: If the user explicitly writes a rating (e.g., "I rate this 4 out of 5"), use that number. Otherwise, infer a rating between 1 and 5 based on the overall sentiment (5=very positive, 3=neutral, 1=very negative).
+- sentiment: set to 'positive', 'negative', or 'neutral' based on the email content.
+
+4. For each matching feedback email, call the `insert_feedback` tool once with the above extracted fields to store it in the database.
 
 ### STRICT OPERATIONAL RULES:
-- TOOL EXECUTION: You must call the tools. Do not just describe what you would do.
-- FINAL REPORT: Only after all `send_email` calls are finished, provide a short summary of your actions.
+- ONLY check the last 5 emails. Never exceed this limit.
+- ONLY process emails whose subject contains "Feedback on". Skip all others silently.
+- TOOL EXECUTION: You must call the tools. Do not describe what you would do.
+- FINAL REPORT: After all `insert_feedback` calls are done, provide a brief summary: how many emails were scanned, how many matched, and what feedback was stored.
 """
     )
     return agent

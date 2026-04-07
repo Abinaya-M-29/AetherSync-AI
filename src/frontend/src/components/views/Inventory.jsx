@@ -27,7 +27,7 @@ export default function Inventory() {
     }
 
     try {
-      const res = await axios.post(`http://localhost:8000/api/inventory/products/${selectedProduct.sku}/sell`, {
+      const res = await axios.post(`/api/inventory/products/${selectedProduct.sku}/sell`, {
         quantity: parseInt(sellQuantity, 10)
       });
       setSellModalOpen(false);
