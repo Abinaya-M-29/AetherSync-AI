@@ -3,7 +3,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import ForestIcon from '@mui/icons-material/Forest';
 import ListAltIcon from '@mui/icons-material/ListAlt';
-import SettingsIcon from '@mui/icons-material/Settings';
+
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function Sidebar({ drawerWidth }) {
@@ -15,7 +15,7 @@ export default function Sidebar({ drawerWidth }) {
     { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory' },
     { text: 'Sustainability', icon: <ForestIcon />, path: '/sustainability' },
     { text: 'Activity Logs', icon: <ListAltIcon />, path: '/activity' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+
   ];
 
   return (
@@ -24,18 +24,18 @@ export default function Sidebar({ drawerWidth }) {
       sx={{
         width: drawerWidth,
         flexShrink: 0,
-        [`& .MuiDrawer-paper`]: { 
-          width: drawerWidth, 
-          boxSizing: 'border-box', 
-          backgroundColor: 'rgba(255, 255, 255, 0.4)', 
+        [`& .MuiDrawer-paper`]: {
+          width: drawerWidth,
+          boxSizing: 'border-box',
+          backgroundColor: 'rgba(255, 255, 255, 0.4)',
           backdropFilter: 'blur(20px)',
           borderRight: '1px solid rgba(255, 255, 255, 0.3)',
         },
       }}
     >
       <Toolbar sx={{ px: 3, pt: 2, pb: 1 }}>
-        <Typography variant="h5" color="primary" sx={{ 
-          fontWeight: 900, 
+        <Typography variant="h5" color="primary" sx={{
+          fontWeight: 900,
           letterSpacing: '-0.05em',
           background: 'linear-gradient(45deg, #2E7D32 30%, #1976D2 90%)',
           WebkitBackgroundClip: 'text',
@@ -68,20 +68,20 @@ export default function Sidebar({ drawerWidth }) {
                     })
                   }}
                 >
-                  <ListItemIcon sx={{ 
-                    color: isSelected ? 'secondary.main' : 'inherit', 
+                  <ListItemIcon sx={{
+                    color: isSelected ? 'secondary.main' : 'inherit',
                     minWidth: 42,
                     transition: 'all 0.3s'
                   }}>
                     {item.icon}
                   </ListItemIcon>
-                  <ListItemText 
-                    primary={item.text} 
-                    primaryTypographyProps={{ 
+                  <ListItemText
+                    primary={item.text}
+                    primaryTypographyProps={{
                       fontWeight: isSelected ? 800 : 500,
                       fontSize: '0.92rem',
                       letterSpacing: '0.01em'
-                    }} 
+                    }}
                   />
                 </ListItemButton>
               </ListItem>

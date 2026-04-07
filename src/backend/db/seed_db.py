@@ -47,7 +47,7 @@ def seed():
         moved_at    DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     
-    CREATE TABLE feedback_store (
+    CREATE TABLE IF NOT EXISTS feedback_store (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source TEXT NOT NULL,              -- 'email', 'web', 'mobile', 'chatbot'
         sender_id TEXT,                    -- email, user_id, phone, etc.
@@ -58,6 +58,29 @@ def seed():
         sentiment TEXT,
         received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         processed BOOLEAN DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT UNIQUE NOT NULL,
+        agent_name TEXT,
+        domain TEXT,
+        input TEXT,
+        status TEXT CHECK(status IN ('running', 'completed', 'failed')),
+        response TEXT,
+        error TEXT,
+        started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        finished_at DATETIME
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_steps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT REFERENCES agent_runs(run_id),
+        step_order INTEGER,
+        step_type TEXT,
+        description TEXT,
+        payload TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     """)
 

@@ -8,7 +8,7 @@ import Co2Icon from '@mui/icons-material/Co2';
 import BoltIcon from '@mui/icons-material/Bolt';
 
 export default function Dashboard() {
-  const { gridHealth } = useMetrics();
+  const { gridHealth, activityLogs } = useMetrics();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
@@ -162,7 +162,7 @@ export default function Dashboard() {
         </Box>
 
         <Box sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2 }}>
-          <AgentTimeline onAction={handleActionRequired} />
+          <AgentTimeline tasks={activityLogs} onAction={handleActionRequired} />
         </Box>
       </Card>
 

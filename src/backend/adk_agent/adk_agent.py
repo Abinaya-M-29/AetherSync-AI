@@ -10,7 +10,7 @@ from google.adk.models import Gemini
 import os
 from dotenv import load_dotenv
 from datetime import datetime
-load_dotenv("secrets/.env")
+load_dotenv("secrets/.env", override=True)
 
 MCP_URL = "http://localhost:8080/mcp"
 
@@ -36,8 +36,8 @@ inventory_agent:
     - post a blog that "only {n} left"
 """
 
-SUPPLIER_EMAIL = "ajithdschrozahan@gmail.com"   # raw materials contact
-YOUR_EMAIL     = "inocajith21.5@gmail.com"     # for CC / meeting organiser
+SUPPLIER_EMAIL =   "abinayamurugesan29@gmail.com" # raw materials contact
+YOUR_EMAIL     = "abinayamurugesan2912@gmail.com"     # for CC / meeting organiser
 
 def build_inventory_prompt() -> str:
     now        = datetime.now()

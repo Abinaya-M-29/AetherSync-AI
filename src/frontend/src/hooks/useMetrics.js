@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { gridHealthData, inventoryData } from '../mockData';
+import { gridHealthData } from '../mockData';
 
 // Custom hook for polling mechanism
 function useInterval(callback, delay) {
@@ -26,6 +26,7 @@ function useInterval(callback, delay) {
 export function useMetrics() {
   const [gridHealth, setGridHealth] = useState(gridHealthData);
   const [inventory, setInventory] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchInventory = async () => {
@@ -40,13 +41,27 @@ export function useMetrics() {
     }
   };
 
+  const fetchActivityLogs = async () => {
+    try {
+      const res = await axios.get('http://localhost:8000/api/activity/logs?limit=10');
+      setActivityLogs(res.data);
+    } catch (err) {
+      console.error("Error fetching activity logs", err);
+    }
+  };
+
   useEffect(() => {
     fetchInventory();
+    fetchActivityLogs();
   }, []);
 
   useInterval(() => {
     fetchInventory();
-  }, 15000); // Poll every 15 seconds
+  }, 60000); // Poll inventory every 15 seconds
 
-  return { gridHealth, inventory, loading, fetchInventory };
+  useInterval(() => {
+    fetchActivityLogs();
+  }, 10000); // Poll activity logs every 10 seconds
+
+  return { gridHealth, inventory, activityLogs, loading, fetchInventory };
 }

@@ -8,3 +8,4 @@ __pycache__/
 *.log
 *.db
 *.sqlite
+src/tmp/schedule_queue

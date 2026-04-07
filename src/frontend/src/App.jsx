@@ -3,6 +3,7 @@ import Shell from './components/layout/Shell';
 import Dashboard from './components/views/Dashboard';
 import Inventory from './components/views/Inventory';
 import Sustainability from './components/views/Sustainability';
+import ActivityLogs from './components/views/ActivityLogs';
 
 function App() {
   return (
@@ -13,8 +14,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="sustainability" element={<Sustainability />} />
-          <Route path="activity" element={<div>Activity Logs</div>} />
-          <Route path="settings" element={<div>Settings</div>} />
+          <Route path="activity" element={<ActivityLogs />} />
         </Route>
       </Routes>
     </BrowserRouter>
