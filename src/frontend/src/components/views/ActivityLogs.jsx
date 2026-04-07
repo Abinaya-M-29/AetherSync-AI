@@ -44,7 +44,7 @@ export default function ActivityLogs() {
     setDetailsLoading(true);
     setRunDetails(null);
     try {
-      const res = await axios.get(`http://localhost:8000/api/activity/logs/${runId}`);
+      const res = await axios.get(`/api/activity/logs/${runId}`);
       setRunDetails(res.data);
     } catch (err) {
       console.error("Failed to fetch run details:", err);

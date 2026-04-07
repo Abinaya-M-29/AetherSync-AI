@@ -65,7 +65,7 @@ blogger  = build("blogger",  "v3", credentials=creds, cache_discovery=False)
 #     return gmail, calendar, tasks, blogger
 # ===== MCP SERVER =====
 # mcp = FastMCP("google-tools")
-mcp = FastMCP("AetherMCPServer", host="0.0.0.0", port=8080)
+mcp = FastMCP("AetherMCPServer", host="0.0.0.0", port=8081)
 
 
 DB_PATH = "database/inventory.db"

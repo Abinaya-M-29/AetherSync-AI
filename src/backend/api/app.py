@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import pickle
 import sqlite3
 from typing import Dict, Any
@@ -21,7 +22,7 @@ from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnecti
 
 load_dotenv("secrets/.env", override=True)
 
-MCP_URL = "http://localhost:8080/mcp"
+MCP_URL = "http://127.0.0.1:8081/mcp"
 
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
@@ -45,10 +46,11 @@ app.add_middleware(
 )
 
 def get_flow():
+    base_url = os.environ.get("BASE_URL", "http://localhost:8000")
     return Flow.from_client_secrets_file(
         "secrets/credentials.json",
         scopes=SCOPES,
-        redirect_uri="http://localhost:8000/oauth2callback"
+        redirect_uri=f"{base_url}/oauth2callback"
     )
 
 flow = get_flow()
@@ -94,14 +96,38 @@ async def check_inventory_low():
     return {"status": "completed", "result": result}
 
 @app.post("/automated_quotation_agent")
-async def automated_quotation_agent():
-    result = await run_orchestrator("Call automated Sales Quotation Agent. check email and generate quotation")
-    return {"status": "completed", "result": result}
+async def automated_quotation_agent(background_tasks: BackgroundTasks):
+    background_tasks.add_task(
+        run_orchestrator,
+        "Call automated Sales Quotation Agent. check email and generate quotation"
+    )
+    return {"status": "accepted", "message": "Quotation agent is running in background."}
 
 @app.post("/automated_feedback_agent")
-async def automated_feedback_agent():
-    result = await run_orchestrator("Check emails for any customer feedback and store it in the database")
-    return {"status": "completed", "result": result}
+async def automated_feedback_agent(background_tasks: BackgroundTasks):
+    background_tasks.add_task(
+        run_orchestrator,
+        "Check emails for any customer feedback and store it in the database"
+    )
+    return {"status": "accepted", "message": "Feedback agent is running in background."}
+
+
+@app.get("/api/feedback/summary")
+def get_feedback_summary():
+    conn = get_db_connection()
+    try:
+        row = conn.execute(
+            "SELECT AVG(rating) as avg_rating, COUNT(*) as total FROM feedback_store WHERE rating IS NOT NULL"
+        ).fetchone()
+        avg = row["avg_rating"] if row["avg_rating"] is not None else 0.0
+        total = row["total"] if row["total"] is not None else 0
+        return {
+            "average_rating": round(avg, 1),
+            "total_reviews": total,
+            "out_of": 5
+        }
+    finally:
+        conn.close()
 
 @app.post("/chat_async")
 async def chat_async(req: dict):
@@ -146,6 +172,22 @@ async def chat_async(req: dict):
 def get_db_connection():
     conn = sqlite3.connect("database/inventory.db")
     conn.row_factory = sqlite3.Row
+    # Ensure feedback_store table exists (guard for Docker deployments)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS feedback_store (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL DEFAULT 'email',
+            sender_id TEXT,
+            sender_name TEXT,
+            subject TEXT,
+            message TEXT NOT NULL DEFAULT '',
+            rating INTEGER,
+            sentiment TEXT,
+            received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            processed BOOLEAN DEFAULT 0
+        )
+    """)
+    conn.commit()
     return conn
 
 @app.get("/api/inventory/products")
@@ -293,3 +335,17 @@ def get_activity_log_detail(run_id: str):
         return result
     finally:
         conn.close()
+
+# ── Frontend Static Files (For Unified Docker Deployment) ───────────────────
+
+# Mount the static files from the React build directory if it exists
+if os.path.exists("/app/src/frontend/dist"):
+    app.mount("/assets", StaticFiles(directory="/app/src/frontend/dist/assets"), name="assets")
+
+    @app.get("/{catchall:path}")
+    def serve_frontend(catchall: str):
+        # Serve index.html for any path not matching API routes
+        # Check if it starts with api/ to not incorrectly catch API 404s
+        if catchall.startswith("api/") or catchall in ["login", "oauth2callback"] or catchall.startswith("chat_async") or catchall.startswith("flush-queue") or catchall.startswith("check-inventory"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        return FileResponse("/app/src/frontend/dist/index.html")
