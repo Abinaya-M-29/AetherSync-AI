@@ -15,7 +15,6 @@ function App() {
           <Route path="inventory" element={<Inventory />} />
           <Route path="sustainability" element={<Sustainability />} />
           <Route path="activity" element={<ActivityLogs />} />
-          <Route path="settings" element={<div>Settings</div>} />
         </Route>
       </Routes>
     </BrowserRouter>
