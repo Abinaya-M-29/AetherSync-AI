@@ -4,11 +4,25 @@ from fastapi.responses import RedirectResponse
 import pickle
 import sqlite3
 from typing import Dict, Any
+import httpx
+from contextlib import asynccontextmanager
 # from mcp_server.google_tools import get_flow
 from fastapi.middleware.cors import CORSMiddleware
 from google_auth_oauthlib.flow import Flow
 # from backend.workflow.graph_flow import app_graph
-from backend.workflow.graph_flow import app_graph_async
+# from backend.workflow.graph_flow import app_graph_async
+from backend.workflows.graph_router import run as run_orchestrator
+from pydantic import BaseModel
+from dotenv import load_dotenv
+from datetime import datetime
+from google.adk.agents import Agent
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+
+load_dotenv("secrets/.env")
+
+MCP_URL = "http://localhost:8080/mcp"
+
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
@@ -39,6 +53,13 @@ def get_flow():
 
 flow = get_flow()
 
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    domain:   str
+    response: str
+    error:    str = ""
 
 @app.get("/login")
 def login():
@@ -61,31 +82,46 @@ def oauth_callback(request: Request):
     return {"status": "authenticated"}
 
 
-# @app.post("/chat")
-# async def chat(req: dict):
-#     user_input = req["message"]
+@app.post("/flush-queue")
+async def flush_queue():
+    result = await run_orchestrator("Flush the MCP schedule queue and return the result.")
+    print(result)
+    return {"status": "accepted", "message": "Done flush operation."}
 
-#     result = app_graph.invoke({
-#         "input": user_input
-#     })
-#     print("Result:", result)
-#     return {
-#         "response": result["output"]
-#     }
-    
-    
+@app.post("/check-inventory")
+async def check_inventory_low():
+    result = await run_orchestrator("Check our database and send emails if any inventory  low")
+    return {"status": "completed", "result": result}
+
+@app.post("/automated_quotation_agent")
+async def automated_quotation_agent():
+    result = await run_orchestrator("Call automated Sales Quotation Agent. check email and generate quotation")
+    return {"status": "completed", "result": result}
+
+@app.post("/automated_feedback_agent")
+async def automated_feedback_agent():
+    result = await run_orchestrator("Check emails for any customer feedback and store it in the database")
+    return {"status": "completed", "result": result}
+
 @app.post("/chat_async")
 async def chat_async(req: dict):
     try:
-        user_input = req["message"]
+        # user_input = req["message"]
 
-        result = await app_graph_async.ainvoke({
-            "input": user_input
-        })
-        print("Result:", result)
-        return {
-            "response": result["output"]
-        }
+        # result = await app_graph_async.ainvoke({
+        #     "input": user_input
+        # })
+        # print("Result:", result)
+        # return {
+        #     "response": result["output"]
+        # }
+        result = await run_orchestrator(req.message)
+ 
+        return ChatResponse(
+            domain=result.get("domain", "unknown"),
+            response=result.get("response", ""),
+            error=result.get("error", ""),
+        )
     except Exception as e:
         print("Error during async chat:", str(e))
         return {

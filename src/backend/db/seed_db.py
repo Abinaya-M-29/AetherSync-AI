@@ -32,6 +32,8 @@ def seed():
         unit_price    REAL NOT NULL DEFAULT 0.0,
         stock_qty     INTEGER NOT NULL DEFAULT 0,
         reorder_level INTEGER NOT NULL DEFAULT 10,
+        current_offer TEXT,
+        offer_expires_at DATETIME,
         created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -43,6 +45,19 @@ def seed():
         qty         INTEGER NOT NULL,
         note        TEXT,
         moved_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    CREATE TABLE feedback_store (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source TEXT NOT NULL,              -- 'email', 'web', 'mobile', 'chatbot'
+        sender_id TEXT,                    -- email, user_id, phone, etc.
+        sender_name TEXT,
+        subject TEXT,
+        message TEXT NOT NULL,
+        rating INTEGER,
+        sentiment TEXT,
+        received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        processed BOOLEAN DEFAULT 0
     );
     """)
 
@@ -60,17 +75,17 @@ def seed():
 
     cur.executemany("""
         INSERT OR IGNORE INTO products
-            (sku, name, category_id, supplier_id, unit_price, stock_qty, reorder_level)
-        VALUES (?,?,?,?,?,?,?)
+            (sku, name, category_id, supplier_id, unit_price, stock_qty, reorder_level, current_offer, offer_expires_at)
+        VALUES (?,?,?,?,?,?,?,?,?)
     """, [
-        ("EL-001", "Wireless Mouse",        1, 1, 499.00,  45, 10),
-        ("EL-002", "Mechanical Keyboard",   1, 1, 1899.00, 20, 5),
-        ("EL-003", "USB-C Hub 7-in-1",      1, 1, 1299.00, 12, 8),
-        ("ST-001", "A4 Notebook (Pack 5)",  2, 2, 149.00,  80, 20),
-        ("ST-002", "Ball Pen Box (50pcs)",  2, 2,  99.00,  60, 15),
-        ("FU-001", "Ergonomic Chair",       3, 3, 8999.00,  8,  2),
-        ("FU-002", "Standing Desk",         3, 3,15999.00,  4,  2),
-        ("AP-001", "Company T-Shirt (M)",   4, 2, 399.00,  30, 10),
+        ("EL-001", "Wireless Mouse",        1, 1, 499.00,  45, 10, "20% off",  "2024-12-31"),
+        ("EL-002", "Mechanical Keyboard",   1, 1, 1899.00, 4, 5, "5% off", "2024-12-31"),
+        ("EL-003", "USB-C Hub 7-in-1",      1, 1, 1299.00, 12, 8, "15% off",  "2024-12-31"),
+        ("ST-001", "A4 Notebook (Pack 5)",  2, 2, 149.00,  80, 20, "5% off",  "2024-12-31"),
+        ("ST-002", "Ball Pen Box (50pcs)",  2, 2,  99.00,  60, 15, "10% off", "2024-12-31"),
+        ("FU-001", "Ergonomic Chair",       3, 3, 8999.00,  0,  2, "25% off",  "2024-12-31"),
+        ("FU-002", "Standing Desk",         3, 3,15999.00,  4,  2, "10% off",  "2024-12-31"),
+        ("AP-001", "Company T-Shirt (M)",   4, 2, 399.00,  30, 5, "Buy 2 Get 1 Free", "2024-12-31"),
     ])
 
     cur.executemany("""
@@ -83,6 +98,15 @@ def seed():
         (2, "OUT",  10, "Internal use"),
         (6, "IN",   10, "Initial stock"),
         (6, "OUT",   2, "Office setup"),
+    ])
+    
+    cur.executemany("""
+        INSERT INTO feedback_store (source, sender_id, sender_name, subject, message, rating, sentiment)
+        VALUES (?,?,?,?,?,?,?)
+    """, [
+        ("email", "customer1@example.com", "John Doe", "Feedback on Wireless Mouse", "I love the new Wireless Mouse!", 5, "positive"),
+        ("email", "customer2@example.com", "Jane Smith", "Complaint about Mechanical Keyboard", "The keyboard is not responsive enough.", 2, "negative"),
+        ("web", "user123", "Alice Johnson", "Suggestion for Standing Desk", "It would be great if the desk had built-in cable management.", 4, "neutral"),
     ])
 
     conn.commit()
