@@ -1,0 +1,20 @@
+{
+  "blog_post": {
+    "content": "Only 2 units of Ball Pen Box (50pcs) (SKU: ST-002) remaining. We will place the reorder during non-carbon hours to minimize environmental impact.",
+    "title": "Low Stock Alert: Ball Pen Box (50pcs)"
+  },
+  "calendar_meeting": {
+    "attendee_emails": [
+      "abinayamurugesan29@gmail.com"
+    ],
+    "start": "2026-04-08T09:00:00",
+    "end": "2026-04-08T09:30:00",
+    "summary": "Restock Review: Ball Pen Box (50pcs)",
+    "description": "Review restock plan for Ball Pen Box (50pcs). Current stock is critically low at 2 units."
+  },
+  "email": {
+    "subject": "Low Stock Alert: Ball Pen Box (50pcs) (SKU: ST-002) \u2014 only 2 units left",
+    "body": "Please prepare to restock Ball Pen Box (50pcs) (SKU: ST-002). Current stock is critically low at 2 units. We will place the order during non-carbon hours to minimize environmental impact.",
+    "to": "abinayamurugesan29@gmail.com"
+  }
+}

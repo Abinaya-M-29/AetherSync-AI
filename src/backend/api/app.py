@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
 from fastapi.responses import RedirectResponse
 import pickle
 import sqlite3
@@ -19,7 +19,7 @@ from google.adk.agents import Agent
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 
-load_dotenv("secrets/.env")
+load_dotenv("secrets/.env", override=True)
 
 MCP_URL = "http://localhost:8080/mcp"
 
@@ -189,7 +189,7 @@ def get_inventory():
         conn.close()
 
 @app.post("/api/inventory/products/{sku}/sell")
-def sell_inventory(sku: str, payload: Dict[str, Any]):
+def sell_inventory(sku: str, payload: Dict[str, Any], background_tasks: BackgroundTasks):
     quantity = int(payload.get("quantity", 1))
     if quantity <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
@@ -199,11 +199,13 @@ def sell_inventory(sku: str, payload: Dict[str, Any]):
         cursor = conn.cursor()
         
         # Check current stock
-        product = cursor.execute("SELECT id, stock_qty FROM products WHERE sku = ?", (sku,)).fetchone()
+        product = cursor.execute("SELECT id, stock_qty, reorder_level FROM products WHERE sku = ?", (sku,)).fetchone()
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
             
         current_stock = product['stock_qty']
+        reorder_level = product['reorder_level']
+        
         if current_stock < quantity:
             raise HTTPException(status_code=400, detail=f"Insufficient stock. Available: {current_stock}")
             
@@ -219,9 +221,75 @@ def sell_inventory(sku: str, payload: Dict[str, Any]):
         )
         
         conn.commit()
+        
+        # Trigger automation if stock crosses reorder threshold
+        if current_stock > reorder_level and new_stock <= reorder_level:
+            trigger_prompt = (
+                f"inventory check: stock for SKU {sku} has dropped to {new_stock} units "
+                f"which is at or below the reorder level of {reorder_level}. "
+                f"Please check all low stock products in the inventory database and send reorder emails to suppliers."
+            )
+            background_tasks.add_task(run_orchestrator, trigger_prompt)
+            
         return {"success": True, "new_stock": new_stock, "message": f"Successfully sold {quantity} units"}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+# ── Activity Log Endpoints ──────────────────────────────────────────────────
+
+@app.get("/api/activity/logs")
+def get_activity_logs(limit: int = 20, domain: str = None):
+    conn = get_db_connection()
+    try:
+        if domain:
+            rows = conn.execute(
+                """
+                SELECT * FROM agent_runs
+                WHERE domain = ?
+                ORDER BY started_at DESC
+                LIMIT ?
+                """,
+                (domain, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM agent_runs
+                ORDER BY started_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+@app.get("/api/activity/logs/{run_id}")
+def get_activity_log_detail(run_id: str):
+    conn = get_db_connection()
+    try:
+        run = conn.execute(
+            "SELECT * FROM agent_runs WHERE run_id = ?", (run_id,)
+        ).fetchone()
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
+
+        steps = conn.execute(
+            """
+            SELECT * FROM agent_steps
+            WHERE run_id = ?
+            ORDER BY step_order ASC
+            """,
+            (run_id,),
+        ).fetchall()
+
+        result = dict(run)
+        result["steps"] = [dict(s) for s in steps]
+        return result
     finally:
         conn.close()

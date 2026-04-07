@@ -1,0 +1,20 @@
+{
+  "blog_post": {
+    "content": "Only 6 units of USB-C Hub 7-in-1 (SKU: EL-003) remaining. We will place the reorder during non-carbon hours to minimize environmental impact.",
+    "title": "Low Stock Alert: USB-C Hub 7-in-1"
+  },
+  "calendar_meeting": {
+    "description": "Review restock plan for USB-C Hub 7-in-1. Current stock is critically low at 6 units.",
+    "attendee_emails": [
+      "ajithdschrozahan@gmail.com"
+    ],
+    "summary": "Restock Review: USB-C Hub 7-in-1",
+    "end": "2026-04-08T09:30:00",
+    "start": "2026-04-08T09:00:00"
+  },
+  "email": {
+    "body": "Please prepare to restock USB-C Hub 7-in-1 (SKU: EL-003). Current stock is critically low at 6 units. We will place the order during non-carbon hours to minimize environmental impact.",
+    "to": "ajithdschrozahan@gmail.com",
+    "subject": "Low Stock Alert: USB-C Hub 7-in-1 (SKU: EL-003) \u2014 only 6 units left"
+  }
+}

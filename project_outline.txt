@@ -1,0 +1,73 @@
+================================================================                
+                PROJECT OUTLINE: AETHERSYNC
+        "Harmonizing Business Velocity with Planetary Health"
+================================================================
+
+1. PROJECT OVERVIEW
+-------------------
+AetherSync is a multi-agent, "Grid-Aware" business orchestrator that 
+automates proactive sales and marketing tasks based on environmental 
+sustainability constraints. It ensures that energy-intensive AI 
+operations occur only during peak renewable energy windows.
+
+2. CORE PROBLEM STATEMENT
+-------------------------
+- AI-driven productivity often ignores the carbon cost of data centers.
+- Businesses struggle to balance "immediate action" (sales) with 
+  "responsible action" (sustainability).
+- Stock-outs lead to lost revenue; AetherSync solves this proactively 
+  without increasing the carbon footprint.
+
+3. TECHNOLOGY STACK
+-------------------
+- AI Brain: Gemini 2.5 Flash (via Vertex AI)
+- Orchestration: LangGraph (Multi-Agent State Machine)
+- Backend: Python (FastAPI)
+- Database: SQLite (Lightweight, High-speed local state)
+- Frontend: React + Material UI (MUI v7)
+- Integrations: Model Context Protocol (MCP)
+- Deployment: Google Cloud Run (Serverless)
+
+4. ARCHITECTURE & MULTI-AGENT FLOW
+----------------------------------
+A. PRIMARY ORCHESTRATOR: Coordinates state between specialized agents.
+B. INVENTORY AGENT: Monitors SQLite for stock levels < 5 units.
+C. SUSTAINABILITY AGENT: Checks real-time Carbon Intensity (Chennai Grid).
+D. EXECUTION AGENT: Manages Google Workspace tools via MCP.
+
+[Logic Flow]:
+Low Stock Detected -> Check Grid Health -> 
+IF Green: Trigger Sales Meeting (Meet) & Draft Promo (Blogger).
+IF Red: Queue Task -> Notify Dashboard -> Wait for Solar Peak.
+
+5. KEY FEATURES & INNOVATIONS
+-----------------------------
+- Eco-Gating: Hard-coded logic to defer "heavy" tasks to green hours.
+- Proactive Sales: Automatic scheduling of team meetings when stock is low.
+- Carbon Savings Tracker: Logs avoided CO2 emissions in SQLite.
+- Live Agent Timeline: Visualizing "AI Thought Processes" in the UI.
+
+6. REPOSITORY STRUCTURE
+-----------------------
+/backend
+    /agents          - LangGraph nodes and decision logic
+    /tools           - MCP tool definitions (Calendar, Blogger, Grid)
+    main.py          - FastAPI endpoints and server init
+    database.py      - SQLite schema and CRUD operations
+/frontend
+    /src/components  - MUI Dashboard, GridMeter, AgentTimeline
+    App.js           - React state management and API polling
+Dockerfile           - Cloud Run container configuration
+requirements.txt     - Python dependencies
+
+7. THE "GREEN" IMPACT
+---------------------
+By utilizing "Temporal Load Shifting," AetherSync reduces the operational 
+carbon intensity of AI business workflows by up to 40% by aligning 
+compute-heavy tasks with renewable energy availability.
+
+================================================================
+Developed for: Hackathon 2026
+Team: 2 Members (Architect & Integrator)
+Status: MVP / Prototype
+================================================================

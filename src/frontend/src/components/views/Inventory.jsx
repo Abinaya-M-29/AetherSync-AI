@@ -6,7 +6,7 @@ import { useMetrics } from '../../hooks/useMetrics';
 
 export default function Inventory() {
   const { inventory, loading, fetchInventory } = useMetrics();
-  
+
   const [sellModalOpen, setSellModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [sellQuantity, setSellQuantity] = useState(1);
@@ -19,19 +19,25 @@ export default function Inventory() {
 
   const handleSellSubmit = async () => {
     if (!selectedProduct || sellQuantity <= 0) return;
-    
+
     // Remove focus from the active element (e.g. the Confirm button) to prevent 
     // the "Blocked aria-hidden on an element because its descendant retained focus" warning.
     if (document.activeElement && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    
+
     try {
-      await axios.post(`http://localhost:8000/api/inventory/products/${selectedProduct.sku}/sell`, {
+      const res = await axios.post(`http://localhost:8000/api/inventory/products/${selectedProduct.sku}/sell`, {
         quantity: parseInt(sellQuantity, 10)
       });
       setSellModalOpen(false);
       fetchInventory(); // Refresh the grid
+
+      if (res.data.agent_triggered) {
+        alert(`${res.data.message}\n\n🤖 AetherSync AI Triggered!\nStock is now low. Auto-restock workflow initiated (actions may be queued depending on Carbon Hours). Check Activity Logs!`);
+      } else {
+        alert(res.data.message);
+      }
     } catch (error) {
       console.error("Error selling product:", error);
       alert(error.response?.data?.detail || "Failed to sell product");
@@ -55,7 +61,7 @@ export default function Inventory() {
       renderCell: (params) => {
         let gradient = 'none';
         let color = '#fff';
-        
+
         if (params.value === "Low") {
           gradient = 'linear-gradient(135deg, #ff0844 0%, #ffb199 100%)';
         } else if (params.value === "Medium") {
@@ -68,16 +74,16 @@ export default function Inventory() {
         }
 
         return (
-          <Chip 
-            label={params.value} 
-            size="small" 
-            sx={{ 
+          <Chip
+            label={params.value}
+            size="small"
+            sx={{
               background: gradient,
               color: color,
               fontWeight: 'bold',
               border: 'none',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }} 
+            }}
           />
         );
       }
@@ -169,8 +175,8 @@ export default function Inventory() {
         />
       </Card>
 
-      <Dialog 
-        open={sellModalOpen} 
+      <Dialog
+        open={sellModalOpen}
         onClose={() => setSellModalOpen(false)}
         PaperProps={{
           sx: {

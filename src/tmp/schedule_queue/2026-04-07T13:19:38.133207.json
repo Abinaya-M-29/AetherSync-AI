@@ -1,0 +1,20 @@
+{
+  "blog_post": {
+    "content": "Only 3 units of Wireless Mouse (SKU: EL-001) remaining. We will place the reorder during non-carbon hours to minimize environmental impact.",
+    "title": "Low Stock Alert: Wireless Mouse"
+  },
+  "email": {
+    "to": "ajithdschrozahan@gmail.com",
+    "body": "Please prepare to restock Wireless Mouse (SKU: EL-001). Current stock is critically low at 3 units. We will place the order during non-carbon hours to minimize environmental impact.",
+    "subject": "Low Stock Alert: Wireless Mouse (SKU: EL-001) \u2014 only 3 units left"
+  },
+  "calendar_meeting": {
+    "description": "Review restock plan for Wireless Mouse. Current stock is critically low at 3 units.",
+    "end": "2026-04-08T09:30:00",
+    "summary": "Restock Review: Wireless Mouse",
+    "start": "2026-04-08T09:00:00",
+    "attendee_emails": [
+      "ajithdschrozahan@gmail.com"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "email": {
+    "to": "ajithdschrozahan@gmail.com",
+    "subject": "Low Stock Alert: Mechanical Keyboard (SKU: EL-002) \u2014 only 4 units left",
+    "body": "Please prepare to restock Mechanical Keyboard (SKU: EL-002). Current stock is critically low at 4 units. We will place the order during non-carbon hours to minimize environmental impact."
+  },
+  "calendar_meeting": {
+    "summary": "Restock Review: Mechanical Keyboard",
+    "attendee_emails": [
+      "ajithdschrozahan@gmail.com"
+    ],
+    "end": "2026-04-08T09:30:00",
+    "description": "Review restock plan for Mechanical Keyboard. Current stock is critically low at 4 units.",
+    "start": "2026-04-08T09:00:00"
+  },
+  "blog_post": {
+    "content": "Only 4 units of Mechanical Keyboard (SKU: EL-002) remaining. We will place the reorder during non-carbon hours to minimize environmental impact.",
+    "title": "Low Stock Alert: Mechanical Keyboard"
+  }
+}

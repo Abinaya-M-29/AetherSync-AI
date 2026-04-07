@@ -39,7 +39,9 @@ from backend.adk_agent.adk_agent import (
     check_feedback_and_write_to_db
 )
 from dotenv import load_dotenv
-load_dotenv("secrets/.env")
+load_dotenv("secrets/.env", override=True)
+
+from backend.db.run_logger import start_run, log_step, finish_run
 
 # ── Gemini for the intent classifier (ultra-light call, no tools needed) ──
 # genai.configure()  # uses GOOGLE_API_KEY from env
@@ -69,6 +71,7 @@ _AGENT_FACTORIES = {
 # ── State ──────────────────────────────────────────────────────────────────
 
 class AgentState(TypedDict):
+    run_id:   str
     input:    str
     domain:   Domain
     response: str
@@ -105,6 +108,14 @@ User request: {state['input']}"""
     domain_raw = response.text.strip().lower()
     domain: Domain = domain_raw if domain_raw in _AGENT_FACTORIES else "unknown"
     print(f"[router] classified as: {domain!r}")
+    
+    log_step(
+        state["run_id"],
+        1,
+        "classify",
+        f"Intent classified as '{domain}'"
+    )
+    
     return {**state, "domain": domain}
 
 
@@ -135,6 +146,7 @@ async def handle_unknown(state: AgentState) -> AgentState:
 
 async def _run(state: AgentState, domain: str) -> AgentState:
     """Instantiate the ADK agent for `domain` and run it against the user's input."""
+    run_id = state.get("run_id")
     try:
         factory = _AGENT_FACTORIES[domain]
         # agent   = await factory()
@@ -142,10 +154,9 @@ async def _run(state: AgentState, domain: str) -> AgentState:
         # Better error context on factory failure
         try:
             agent = await factory()
-        except* Exception as eg:  # Python 3.11+ ExceptionGroup
-            causes = "; ".join(str(e) for e in eg.exceptions)
-            raise RuntimeError(f"MCP session init failed: {causes}") from eg
-
+            if run_id: log_step(run_id, 2, "init", f"Agent factory '{domain}' initialized")
+        except Exception as e:
+            raise RuntimeError(f"MCP session init failed: {e}") from e
 
         # ADK agent.run() is synchronous in some versions — wrap just in case
         # if asyncio.iscoroutinefunction(agent.run):
@@ -172,8 +183,10 @@ async def _run(state: AgentState, domain: str) -> AgentState:
         session = await session_service.create_session(
             app_name=domain,
             user_id="user",
-            session_id=f"{domain}_session",
+            session_id=f"{domain}_session" if not run_id else f"{domain}_session_{run_id}",
         )
+
+        if run_id: log_step(run_id, 3, "init", "MCP toolset loaded and session started")
 
         # Build the user message
         user_message = genai.types.Content(
@@ -182,13 +195,50 @@ async def _run(state: AgentState, domain: str) -> AgentState:
         )
 
         # Run the agent and collect the final response
-        # Run the agent and collect the final response
         response_text = ""
+        step_counter = 4
+        
         async for event in runner.run_async(
             user_id="user",
-            session_id=f"{domain}_session",
+            session_id=f"{domain}_session" if not run_id else f"{domain}_session_{run_id}",
             new_message=user_message,
         ):
+            if run_id:
+                # Log model's function calls
+                if hasattr(event, "model_response") and event.model_response and event.model_response.parts:
+                    for part in event.model_response.parts:
+                        if hasattr(part, "function_call") and part.function_call:
+                            tool_name = part.function_call.name
+                            args_dict = None
+                            if hasattr(part.function_call, "args"):
+                                try:
+                                    args_dict = dict(part.function_call.args)
+                                except Exception:
+                                    args_dict = str(part.function_call.args)
+                            
+                            log_step(
+                                run_id,
+                                step_counter,
+                                "tool_call",
+                                f"Calling tool: {tool_name}",
+                                payload_dict={"tool": tool_name, "args": args_dict}
+                            )
+                            step_counter += 1
+
+                # Log tool responses
+                if hasattr(event, "content") and event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if hasattr(part, "function_response") and part.function_response:
+                            tool_name = part.function_response.name
+                            log_step(
+                                run_id,
+                                step_counter,
+                                "tool_response",
+                                f"Tool returned: {tool_name}"
+                            )
+                            step_counter += 1
+
+
             if event.is_final_response():
                 if event.content and event.content.parts:
                     text_parts = [p.text for p in event.content.parts if hasattr(p, "text") and p.text]
@@ -198,6 +248,10 @@ async def _run(state: AgentState, domain: str) -> AgentState:
         if not response_text:
             response_text = "Agent completed but returned no text response."
 
+        if run_id:
+            log_step(run_id, step_counter, "complete", "Agent execution finished")
+            finish_run(run_id, response_text=response_text)
+
         return {**state, "response": response_text}
 
 
@@ -205,6 +259,10 @@ async def _run(state: AgentState, domain: str) -> AgentState:
         traceback.print_exc()
         
         print(f"[router] error in {domain} agent: {exc}")
+        if run_id:
+            log_step(run_id, 999, "error", f"Error: {exc}")
+            finish_run(run_id, error_str=str(exc), domain=domain)
+            
         return {**state, "response": f"Error in {domain} agent: {exc}", "error": str(exc)}
 
 async def test_email_mcp():
@@ -297,11 +355,23 @@ async def run(user_input: str) -> dict:
             "error":    error string or ""
         }
     """
+    run_id = start_run("unknown", "orchestrator", user_input)
+
     initial_state: AgentState = {
+        "run_id":   run_id,
         "input":    user_input,
         "domain":   "unknown",
         "response": "",
         "error":    "",
     }
     final_state = await orchestrator.ainvoke(initial_state)
+
+    # Update DB with the actual classified domain now that we have it
+    finish_run(
+        run_id,
+        response_text=final_state.get("response", ""),
+        error_str=final_state.get("error", ""),
+        domain=final_state.get("domain", "unknown"),
+    )
+
     return final_state

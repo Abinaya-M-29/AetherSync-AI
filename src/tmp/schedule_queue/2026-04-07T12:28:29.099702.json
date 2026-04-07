@@ -1,0 +1,20 @@
+{
+  "email": {
+    "body": "Please prepare to restock Company T-Shirt (M) (SKU: AP-001). Current stock is critically low at 4 units. We will place the order during non-carbon hours to minimize environmental impact.",
+    "to": "ajithdschrozahan@gmail.com",
+    "subject": "Low Stock Alert: Company T-Shirt (M) (SKU: AP-001) \u2014 only 4 units left"
+  },
+  "blog_post": {
+    "content": "Only 4 units of Company T-Shirt (M) (SKU: AP-001) remaining. We will place the reorder during non-carbon hours to minimize environmental impact.",
+    "title": "Low Stock Alert: Company T-Shirt (M)"
+  },
+  "calendar_meeting": {
+    "summary": "Restock Review: Company T-Shirt (M)",
+    "end": "2026-04-08T09:30:00",
+    "description": "Review restock plan for Company T-Shirt (M). Current stock is critically low at 4 units.",
+    "attendee_emails": [
+      "ajithdschrozahan@gmail.com"
+    ],
+    "start": "2026-04-08T09:00:00"
+  }
+}

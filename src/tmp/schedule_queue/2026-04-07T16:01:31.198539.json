@@ -1,0 +1,20 @@
+{
+  "blog_post": {
+    "content": "Only 2 units of A4 Notebook (Pack 5) (SKU: ST-001) remaining. We will place the reorder during non-carbon hours to minimize environmental impact.",
+    "title": "Low Stock Alert: A4 Notebook (Pack 5)"
+  },
+  "calendar_meeting": {
+    "end": "2026-04-08T09:30:00",
+    "summary": "Restock Review: A4 Notebook (Pack 5)",
+    "description": "Review restock plan for A4 Notebook (Pack 5). Current stock is critically low at 2 units.",
+    "attendee_emails": [
+      "abinayamurugesan29@gmail.com"
+    ],
+    "start": "2026-04-08T09:00:00"
+  },
+  "email": {
+    "subject": "Low Stock Alert: A4 Notebook (Pack 5) (SKU: ST-001) \u2014 only 2 units left",
+    "body": "Please prepare to restock A4 Notebook (Pack 5) (SKU: ST-001). Current stock is critically low at 2 units. We will place the order during non-carbon hours to minimize environmental impact.",
+    "to": "abinayamurugesan29@gmail.com"
+  }
+}
